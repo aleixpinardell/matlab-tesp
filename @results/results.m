@@ -22,7 +22,7 @@ classdef results
             % Read output file
             if isempty(strfind(file,'.'))
                 file = [file '.tespout'];
-            elseif isempty(strfind(file,'.orbout'))
+            elseif isempty(strfind(file,'.tespout'))
                 error('The provided file must have "tespout" extesion.')
             end
             resultsText = fileread(file);
