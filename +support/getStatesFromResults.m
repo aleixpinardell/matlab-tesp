@@ -17,5 +17,5 @@ if any(obj.columnIndexes(1:2) > 0)
         end
     end
 else
-    error('The body states could not be retrieved from the provided tesp.results object.')
+    error('The body states could not be retrieved from the provided results object.')
 end

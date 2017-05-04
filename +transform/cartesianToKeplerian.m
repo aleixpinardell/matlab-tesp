@@ -24,8 +24,8 @@ for j = 1:length(r)
 
     NN = N/norm(N);
     ee = e/norm(e);
-    omega = sign(dot(cross(NN,e),h))*acos(dot(ee,NN));
-    f = sign(dot(cross(e,X(j,:)),h))*acos(dot(X(j,:)/r(j),ee));
+    omega = sign(dot(cross(NN,e),h))*real(acos(dot(ee,NN)));
+    f = sign(dot(cross(e,X(j,:)),h))*real(acos(dot(X(j,:)/r(j),ee)));
 
     e = norm(e);
     if isnan(raan) % If the raan is not defined, assign (arbitrary) 0 value

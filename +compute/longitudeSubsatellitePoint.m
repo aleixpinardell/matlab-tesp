@@ -27,7 +27,7 @@ end
 
 % Transform to Cartesian if provided in Keplerian
 if ~cartesian
-    states = tesp.transform.keplerianToCartesian(states);
+    states = tesp.transform.keplerianToCartesian(states,'StandardGravitationalParameter',mu);
 end
 
 L = mod( mod(atan2d(states(:,2),states(:,1)),360) - tesp.transform.epochToGST(epochs), 360);

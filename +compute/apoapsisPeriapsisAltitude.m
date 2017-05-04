@@ -1,9 +1,9 @@
-function h = altitude(obj,varargin)
-%Determine the altitude [m] from a results object or from a state:
-%   h = altitude(tesp.results)
-%   h = altitude(keplerianState)
-%   h = altitude(cartesianState)
-%   h = altitude([X,Y,Z])
+function [ha,hp] = apoapsisPeriapsisAltitude(obj,varargin)
+%Determine the perigee and apogee altitude [m] from a results object or from a state:
+%   [ha,hp] = perigeeApogeeAltitude(tesp.results)
+%   [ha,hp] = perigeeApogeeAltitude(keplerianState)
+%   [ha,hp] = perigeeApogeeAltitude(cartesianState)
+%   [ha,hp] = perigeeApogeeAltitude([X,Y,Z])
 %Optional arguments: 'Radius', 'StandardGravitationalParameter'.
 %By default the Earth's are used.
 
@@ -26,13 +26,14 @@ else
 end
 
 
-% Transform to Cartesian components if necessary
-if ~cartesian
-    states = tesp.transform.keplerianToCartesian(states,'StandardGravitationalParameter',mu);
+% Transform to Keplerian components if necessary
+if cartesian
+    states = tesp.transform.cartesianToKeplerian(states,'StandardGravitationalParameter',mu);
 end
 
-% Obtain the altitudes
-positions = states(:,1:3);  % Get [x,y,z]
-r = tesp.support.normPerRows(positions);  % Obtain the distances from the centre of the central body
-h = r - R;
+% Obtain the apo and peri altitudes
+a = states(:,1);
+e = states(:,2);
+hp = a.*(1-e) - R;
+ha = a.*(1+e) - R;
 

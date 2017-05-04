@@ -1,6 +1,8 @@
 classdef results
     
-    properties (SetAccess=immutable)
+    properties (SetAccess=protected)
+        initialEpoch = []
+        propagationTime = []
         computationTime = []
         matrix = []
     end
@@ -11,6 +13,7 @@ classdef results
     
     properties (Dependent, SetAccess=immutable)
         epochs
+        lifetime
         keplerianStates
         cartesianStates
         sunPositions
@@ -19,47 +22,61 @@ classdef results
     
     methods
         function obj = results(file)
-            % Read output file
-            if isempty(strfind(file,'.'))
-                file = [file '.tespout'];
-            elseif isempty(strfind(file,'.tespout'))
-                error('The provided file must have "tespout" extesion.')
+            if nargin > 0
+                % Read output file
+                if isempty(strfind(file,'.'))
+                    file = [file '.tespout'];
+                elseif isempty(strfind(file,'.tespout'))
+                    error('The provided file must have "tespout" extesion.')
+                end
+                resultsText = fileread(file);
+                
+                % Initial epoch
+                [~,tok] = regexp(resultsText,'INITIAL_EPOCH\s+?(\S+)','match','tokens');
+                if ~isempty(tok)
+                    obj.initialEpoch = str2double(tok{1}{1});
+                end
+                
+                % Propagation time
+                [~,tok] = regexp(resultsText,'PROPAGATION_TIME\s*=\s*(.+?)\s+','match','tokens');
+                if ~isempty(tok)
+                    obj.propagationTime = str2double(tok{1}{1});
+                end
+                
+                % Computation time
+                [~,tok] = regexp(resultsText,'COMPUTATION_TIME\s*=\s*(.+?)\s+','match','tokens');
+                if ~isempty(tok)
+                    obj.computationTime = str2double(tok{1}{1});
+                end
+                
+                % Determine what is each column
+                c = 2;  % Index of the first column (after the epoch) that may contain results
+                if ~isempty(regexp(resultsText,'OUTPUT_BODY_KEPLERIAN_STATE\s+YES','once')) || ...
+                        ~isempty(strfind(resultsText,'BODY SEMIMAJOR AXIS'))
+                    obj.columnIndexes(1) = c;
+                    c = c + 6;
+                end
+                if ~isempty(regexp(resultsText,'OUTPUT_BODY_CARTESIAN_STATE\s+YES','once')) || ...
+                        ~isempty(strfind(resultsText,'BODY POSITION X'))
+                    obj.columnIndexes(2) = c;
+                    c = c + 6;
+                end
+                if ~isempty(regexp(resultsText,'OUTPUT_SUN_POSITION\s+YES','once')) || ...
+                        ~isempty(strfind(resultsText,'SUN POSITION X'))
+                    obj.columnIndexes(3) = c;
+                    c = c + 3;
+                end
+                
+                if ~isempty(regexp(resultsText,'OUTPUT_MOON_POSITION\s+YES','once')) || ...
+                        ~isempty(strfind(resultsText,'MOON POSITION X'))
+                    obj.columnIndexes(4) = c;
+                    c = c + 3;
+                end
+                
+                % Parse results matrix
+                [~,tok] = regexp(resultsText,'RESULTS\s*=\s*(.+)','match','tokens');
+                obj.matrix = str2num(tok{1}{1});
             end
-            resultsText = fileread(file);
-            
-            % Computation time
-            [~,tok] = regexp(resultsText,'COMPUTATION_TIME\s*=\s*(.+?)\s+','match','tokens');
-            if ~isempty(tok)
-                obj.computationTime = str2num(tok{1}{1});
-            end
-            
-            % Determine what is each column
-            c = 2;  % Index of the first column (after the epoch) that may contain results
-            if ~isempty(regexp(resultsText,'OUTPUT_BODY_KEPLERIAN_STATE\s+YES','once')) || ...
-                    ~isempty(strfind(resultsText,'BODY SEMIMAJOR AXIS'))
-                obj.columnIndexes(1) = c;
-                c = c + 6;
-            end
-            if ~isempty(regexp(resultsText,'OUTPUT_BODY_CARTESIAN_STATE\s+YES','once')) || ...
-                    ~isempty(strfind(resultsText,'BODY POSITION X'))
-                obj.columnIndexes(2) = c;
-                c = c + 6;
-            end
-            if ~isempty(regexp(resultsText,'OUTPUT_SUN_POSITION\s+YES','once')) || ...
-                    ~isempty(strfind(resultsText,'SUN POSITION X'))
-                obj.columnIndexes(3) = c;
-                c = c + 3;
-            end
-            
-            if ~isempty(regexp(resultsText,'OUTPUT_MOON_POSITION\s+YES','once')) || ...
-                    ~isempty(strfind(resultsText,'MOON POSITION X'))
-                obj.columnIndexes(4) = c;
-                c = c + 3;
-            end
-            
-            % Parse results matrix
-            [~,tok] = regexp(resultsText,'RESULTS\s*=\s*(.+)','match','tokens');
-            obj.matrix = str2num(tok{1}{1});
         end
         
         % Getters
@@ -67,12 +84,16 @@ classdef results
             val = obj.matrix(:,1);
         end
         
+        function val = get.lifetime(obj)
+            val = tesp.transform.secondsTo(obj.epochs(end) - obj.initialEpoch, 'years');
+        end
+        
         function val = get.keplerianStates(obj)
             c = obj.columnIndexes(1);
             if c > 0
                 val = obj.matrix(:,c:c+6-1);
             else
-                error('OUTPUT_BODY_KEPLERIAN_STATE was set to NO during the propagation, or the input settings and column descriptions are missing.');
+                error('Keplerian states not available.');
             end
         end
         
@@ -81,7 +102,7 @@ classdef results
             if c > 0
                 val = obj.matrix(:,c:c+6-1);
             else
-                error('OUTPUT_BODY_CARTESIAN_STATE was set to NO during the propagation, or the input settings and column descriptions are missing.');
+                error('Cartesian states not available.');
             end
         end
         
@@ -90,7 +111,7 @@ classdef results
             if c > 0
                 val = obj.matrix(:,c:c+3-1);
             else
-                error('OUTPUT_SUN_POSITION was set to NO during the propagation, or the input settings and column descriptions are missing.');
+                error('Sun positions not available.');
             end
         end
         
@@ -99,7 +120,7 @@ classdef results
             if c > 0
                 val = obj.matrix(:,c:c+3-1);
             else
-                error('OUTPUT_MOON_POSITION was set to NO during the propagation, or the input settings and column descriptions are missing.');
+                error('Moon positions not available.');
             end
         end
         
